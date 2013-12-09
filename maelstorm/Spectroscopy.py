@@ -1,8 +1,5 @@
 import numpy as n
-import matplotlib.pyplot as plt
 import cataclysmic as cv
-import matplotlib.cm as cm
-import mynormalize
 
 class Spectra(object):
 	'''
@@ -83,7 +80,9 @@ class Spectra(object):
 		
 
 	def Trail_Spectra(self,cmaps=cm.Greys_r):
-		
+		import matplotlib.cm as cm
+		import mynormalize
+		import matplotlib.pyplot as plt
 		ss=0
 		for i in n.arange(len(self.data['wave'][0])-1):    
 		    if self.Parameters['cenwave'] >= self.data['wave'][0][i]   and self.Parameters['cenwave'] <=self.data['wave'][0][i+1]:

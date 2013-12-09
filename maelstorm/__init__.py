@@ -2,7 +2,7 @@
 """
 
 from maelstorm import metadata
-from maesltorm import Spectroscopy
+from maelstorm import Spectroscopy
 
 __version__ = metadata.version
 __author__ = metadata.authors[0]
