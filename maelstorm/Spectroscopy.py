@@ -116,23 +116,24 @@ class Spectra(object):
 		self.Parameters['dellx']: Pixels
 		lc.Trail_Spectra(self.Parameters['cenwave']=6562.8,self.Parameters['dellx']=121)
 		'''
-		
-		x,y=n.arange(0+.5/self.Parameters['bins'],2,1./self.Parameters['bins']),self.data['wave'][0]
-		
+		self.bin_data['flux']=[]
+		#x,y=n.arange(0+.5/self.Parameters['bins'],2,1./self.Parameters['bins']),self.data['wave'][0]
+		bineq=n.arange(0+.5/self.Parameters['bins'],2,1./self.Parameters['bins'])
+
 		flag=0
 		histo=[]
 
 		for i in n.arange(self.Parameters['bins']):
 		    tempfl=n.zeros(len(self.data['wave'][0]))
 		    lolo=0
-		    print 'Hola ',i
+		    cv.Printer( 'Binning '+str(float(i)/self.Parameters['bins']))
 		    for j in n.arange(len(self.data['phase'])):
 		        if i==0:
-		            if self.data['phase'][j] < x[0] or self.data['phase'][j] >= 1-x[0]:
+		            if self.data['phase'][j] < bineq[0] or self.data['phase'][j] >= 1-bineq[0]:
 		                lolo=lolo+1
 		                tempfl=cv.medfilt1(self.data['flux'][j],self.medi)+tempfl
 		                #print 'on one ',1-bineq[0],' - ',bineq[0]
-		        if self.data['phase'][j] <=x[i-1] and self.data['phase'][j]>x[i] and i!=0:
+		        if self.data['phase'][j] >=bineq[i-1] and self.data['phase'][j]<bineq[i] and i!=0:
 		            lolo=lolo+1
 		            tempfl=cv.medfilt1(self.data['flux'][j],self.medi)+tempfl
 		            #print 'after one>',bineq[i-1],' - ',bineq[i]
@@ -142,10 +143,15 @@ class Spectra(object):
 		    else:
 		    	medis = n.median(tempfl/lolo)
 		    #zvals[i]=tempfl/lolo/medis
-		    self.bin_data['flux'].append(tempfl/lolo/medis)
+		    self.bin_data['flux'].append(tempfl)
 		    #zvals[i+self.Parameters['bins']]=tempfl/lolo/medis
 		    histo.append(lolo)
-		
+		if plot_histo:
+			fig = plt.figure(figsize=(3,4))
+			plt.step(bineq[:self.Parameters['bins']],histo,'b',where='mid')
+			plt.step([i+1.0 for i in bineq[:self.Parameters['bins']]],histo,'b',where='pre')
+			plt.step([i-1.0 for i in bineq[:self.Parameters['bins']]],histo,'b',where='mid')
+			plt.axis([0,1.0,0,max(histo)+1])
 
 	def Trail_Spectra(self,cmaps=cm.Greys_r):
 		import matplotlib.cm as cm
@@ -155,15 +161,16 @@ class Spectra(object):
 		for i in n.arange(len(self.data['wave'][0])-1):    
 		    if self.Parameters['cenwave'] >= self.data['wave'][0][i]   and self.Parameters['cenwave'] <=self.data['wave'][0][i+1]:
 		        ss=i
+		#x,y=n.arange(0+.5/self.Parameters['bins'],2,1./self.Parameters['bins']),self.data['wave'][0]
 		x=self.data['wave'][0][ss-self.Parameters['dellx']:ss+self.Parameters['dellx']]
 		zvals=[]
 		for i in self.bin_data['flux']:
-			zvals.append(i[ss-self.Parameters['dellx']:ss+self.Parameters['dellx']])
+			zvals.append(i[ss-self.Parameters['dellx']:ss+self.Parameters['dellx']]/median(i[ss-self.Parameters['dellx']:ss+self.Parameters['dellx']]))
 		zvals=n.array(zvals)
 		fig = plt.figure(2,figsize=(8,10.5),facecolor='w')
 		ax = fig.add_subplot(111)
 		plt.clf()
-		img = plt.imshow(self.bin_data['flux'],extent=(min(x), max(x),0, 2),interpolation='nearest', cmap=cmaps,aspect='auto')
+		img = plt.imshow(zvals,extent=(min(x), max(x),0, 2),interpolation='nearest', cmap=cmaps,aspect='auto')
 		cbar = plt.colorbar(format='%05.2f')
 		cbar.set_label('Arbitrary Flux')
 		cbar.set_norm(mynormalize.MyNormalize(vmin=zvals.min(),vmax=zvals.max(),stretch='linear'))
