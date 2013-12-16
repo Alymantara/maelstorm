@@ -38,10 +38,10 @@ This will be the README for your project. For now, follow these instructions to 
 Instructions
 ------------
 
-#. Clone the template project, replacing ``my-project`` with the name of the project you are creating::
+#. Clone the template project, replacing ``maelstorm`` with the name of the project you are creating::
 
-        git clone https://github.com/seanfisk/python-project-template.git my-project
-        cd my-project
+        git clone https://github.com/Alymantara/maelstorm.git maelstorm
+        cd maelstorm
 
 #. Edit the metadata file ``my_module/metadata.py`` to correctly describe your project. Don't forget to correct the docstring.
 
@@ -66,17 +66,17 @@ Instructions
 
    With pyenv_ and pyenv-virtualenv_::
 
-       pyenv virtualenv my-project
-       pyenv local my-project
+       pyenv virtualenv maelstorm
+       pyenv local maelstorm
 
    With virtualenvwrapper_::
 
-       mkvirtualenv my-project
+       mkvirtualenv maelstorm
 
    With plain virtualenv_::
 
-       virtualenv /path/to/my-project-venv
-       source /path/to/my-project-venv/bin/activate
+       virtualenv /path/to/maelstorm-venv
+       source /path/to/maelstorm-venv/bin/activate
 
    If you are new to virtual environments, please see the `Virtual Environment section`_ of Kenneth Reitz's Python Guide.
 
