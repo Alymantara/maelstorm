@@ -4,10 +4,10 @@ Information describing the project.
 """
 
 # The package name, which is also the "UNIX name" for the project.
-package = 'maelstorm'
-project = "maelstorm"
+package = 'Maelstorm'
+project = "Melstorm"
 project_no_spaces = project.replace(' ', '')
-version = '0.1'
+version = '0.2'
 description = 'It does cool things for Cataclsymic Variables'
 authors = ['Juan V. Hernandez Santisteban']
 authors_string = ', '.join(authors)

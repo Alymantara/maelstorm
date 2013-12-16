@@ -1,29 +1,43 @@
 import numpy as n
 import cataclysmic as cv
+import glob
+import matplotlib.cm as cm
+import matplotlib.pyplot as plt
+import resample as res
+from pyfits import getval
+from PyAstronomy import funcFit as fuf
+from PyAstronomy import pyasl
 
 class Spectra(object):
 	'''
 	Class that contains all the data used in Doppler.
 	JVHS - Dec 2013
 	'''
-	#import parameters as par
-	#reload(par)
 
-	def __init__(self, list):
-		self.list = list
+	def __init__(self,param_file='parameters.py'):
+		#self.list = list
+		import re
+		f=open(param_file)
+		lines=f.readlines()
+		f.close()
+
+		self.Parameters = {'object': str(re.search('%s(.*)%s' % ('"', '"'), filter(lambda x: 'object' in x,lines)[0]).group(1)),
+			'bins': int(re.search('%s(.*)%s' % ('=', '#'), filter(lambda x: 'bins' in x,lines)[0].replace('\t',' ')).group(1)), 
+			'porb': float(re.search('%s(.*)%s' % ('=', '#'), filter(lambda x: 'porb' in x,lines)[0].replace('\t',' ')).group(1)),
+			'hjd0': float(re.search('%s(.*)%s' % ('=', '#'), filter(lambda x: 'hjd0' in x,lines)[0].replace('\t',' ')).group(1)),
+			'gama': float(re.search('%s(.*)%s' % ('=', '#' ), filter(lambda x: 'gama' in x,lines)[0].replace('\t',' ')).group(1)),
+			'cenwave': float(re.search('%s(.*)%s' % ('=', '#'), filter(lambda x: 'lam0' in x,lines)[0].replace('\t',' ')).group(1)),
+			'dellx' : int(re.search('%s(.*)%s' % ('=', '#'), filter(lambda x: 'dellx' in x,lines)[0].replace('\t',' ')).group(1)),
+			'base_dir':str(re.search('%s(.*)%s' % ('"', '"'), filter(lambda x: 'base_dir' in x,lines)[0].replace('\t',' ')).group(1))}
+		self.phase = n.arange(0+.5/self.Parameters['bins'],1,1./self.Parameters['bins']) 
+
 		self.files = {'name': [], 'phase': []}
 		self.data = {'wave': [], 'flux': [], 'err': []}
 		self.bin_data = {'wave': [], 'flux': [], 'err': []}
-		self.Parameters = {'object': par.object,
-							'bins': par.bins, 
-							'porb': par.porb,
-							'hjd0': par.hjd0,
-							'gama': par.gama,
-							'cenwave': par.lam0,
-							'dellx' : par.dellx}
 		self.author = 'Alymantara - University of Southampton - J.V.Hernandez@soton.ac.uk'
 		self.medi = 3
-		self.phase = n.arange(0+.5/self.Parameters['bins'],1,1./self.Parameters['bins']) 
+
+		 
 
 	def Load_Spectra(self):
 		'''
@@ -32,11 +46,64 @@ class Spectra(object):
 
 		'''
 		self.data = {'wave': [], 'flux': [], 'err': []}
-		self.files['name'],self.files['phase']=n.loadtxt(par.base_dir+'/'+self.list,dtype={'names': ('files', 'phase'),'formats': ('S12', 'f4')},unpack=True)
+		self.files['name'],self.files['phase']=n.loadtxt(Parameters.base_dir+'/'+self.list,dtype={'names': ('files', 'phase'),'formats': ('S12', 'f4')},unpack=True)
 		for i in self.files['name']:
 			print i
-			w,f=n.loadtxt(par.base_dir+'/'+i,unpack=True)
+			w,f=n.loadtxt(Parameters.base_dir+'/'+i,unpack=True)
 			self.data['wave'].append(w),self.data['flux'].append(f)
+
+
+	def Read_spectra(self,type='xshooter',output='input_nir',median_filter=False,resample=False,min_f=0,max_f=24):
+		'''
+		Reads spectra directly from fits file. Calculates Phase for every image.
+
+		-----------
+
+		output:  name for text file and *.npy file for easy retrieval after reading
+
+		median_filter :  Applies a median filter to each spectra of N pixels.
+
+		resample: 			Rebin all spectra to first linear dispersion encountered.
+
+		'''
+		self.data = {'wave': [], 'flux': [], 'err': [],'phase': []}
+
+		if type == 'text':
+			self.files['name'],self.files['phase']=n.loadtxt(Parameters.base_dir+'/'+self.list,dtype={'names': ('files', 'phase'),'formats': ('S12', 'f4')},unpack=True)
+			for i in self.files['name']:
+				print 'Loading: ', i.split('/')[-1][:-5]
+				w,f=n.loadtxt(Parameters.base_dir+'/'+i,unpack=True)
+				self.data['wave'].append(w),self.data['flux'].append(f)
+
+
+		if type == 'xshooter':
+			arm='NIR'
+			files=glob.glob('/Users/juan/astro/SDSS1433/spectroscopy/'+arm+'/*'+arm+'.fits')
+
+			
+			wave,flux,name,mjd,ra,decl,phase,delphase,files1,hjd=[],[],[],[],[],[],[],[],[],[]
+			wt,ft=cv.read_xshooter(files[0])
+			f=open(output+'.txt','w')
+			for i in files[min_f:max_f]:
+			    wav,flu=cv.read_xshooter(i)
+
+			    if resample:
+			        flu=res.rebin2(wav,flu,wt)
+			        flu[n.isnan(flu)] = 0.0
+			    t1,t2,t3,t4,t5=getval(i,'OBJECT'),getval(i,'MJD-OBS'),getval(i,'RA'),getval(i,'DEC'),getval(i,'EXPTIME')
+			    if median_filter:
+			    	wave.append(wav),flux.append(cv.medfilt1(flu,17)),name.append(t1),mjd.append(t2),ra.append(t3),decl.append(t4),delphase.append(t5/3600/24/self.Parameters['porb'])
+			    else:
+			    	wave.append(wav),flux.append(flu),name.append(t1),mjd.append(t2),ra.append(t3),decl.append(t4),delphase.append(t5/3600/24/self.Parameters['porb'])
+
+			    hjd.append(pyasl.helio_jd(t2+0.5,218.324772,10.19017))
+			    phase.append(cv.phase(hjd[-1],self.Parameters['hjd0'],self.Parameters['porb']))
+			    files1.append(i)
+			    print 'Loading: '+i.split('/')[-1][:-5],' ' , t2,' ' ,hjd[-1],' ' ,phase[-1]
+			    print >>f, i.split('/')[-1][:-5]+'.txt' ,phase[-1]
+			    self.data['wave'].append(wav*10.0),self.data['flux'].append(flu),self.data['phase'].append(phase[-1])
+			f.close()
+			n.save(output,[wave,flux,name,hjd,phase,delphase,files1])
 
 	def Phase_Bin(self,plot_histo=True):
 		'''
@@ -58,19 +125,20 @@ class Spectra(object):
 		for i in n.arange(self.Parameters['bins']):
 		    tempfl=n.zeros(len(self.data['wave'][0]))
 		    lolo=0
-		    for j in n.arange(len(self.files['phase'])):
+		    print 'Hola ',i
+		    for j in n.arange(len(self.data['phase'])):
 		        if i==0:
-		            if self.files['phase'][j] < x[0] or self.files['phase'][j] >= 1-x[0]:
+		            if self.data['phase'][j] < x[0] or self.data['phase'][j] >= 1-x[0]:
 		                lolo=lolo+1
 		                tempfl=cv.medfilt1(self.data['flux'][j],self.medi)+tempfl
 		                #print 'on one ',1-bineq[0],' - ',bineq[0]
-		        if self.files['phase'][j] >=x[i-1] and self.files['phase'][j]<x[i] and i!=0:
+		        if self.data['phase'][j] <=x[i-1] and self.data['phase'][j]>x[i] and i!=0:
 		            lolo=lolo+1
 		            tempfl=cv.medfilt1(self.data['flux'][j],self.medi)+tempfl
 		            #print 'after one>',bineq[i-1],' - ',bineq[i]
 		    if lolo == 0:
 		    	lolo =1
-		    	medis=n.median(tempfl+1.0/lolo)
+		    	medis=n.median((tempfl+1.0)/lolo)
 		    else:
 		    	medis = n.median(tempfl/lolo)
 		    #zvals[i]=tempfl/lolo/medis
